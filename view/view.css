@@ -674,18 +674,18 @@ h2 {
   color: var(--ok);
 }
 
-.review {
+.review-pill {
   border-radius: 10px;
   padding: 0 6px;
   border: 1px solid var(--line);
 }
 
-.review.approved {
+.review-pill.approved {
   color: var(--ok);
   border-color: color-mix(in srgb, var(--ok) 40%, transparent);
 }
 
-.review.changes-requested {
+.review-pill.changes-requested {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 40%, transparent);
 }

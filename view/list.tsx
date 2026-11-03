@@ -57,7 +57,7 @@ export function Row({ item, pinned = false }: { item: ListItem; pinned?: boolean
         </span>
         <span className="row-side">
           <ChecksBadge item={item} />
-          {item.review && <span className={`review ${item.review}`}>{REVIEW_WORDS[item.review]}</span>}
+          {item.review && <span className={`review-pill ${item.review}`}>{REVIEW_WORDS[item.review]}</span>}
           {item.subIssues && item.subIssues.total > 0 && (
             <span className="sub-issues" data-hint="Sub-issues done">
               ↳ {item.subIssues.done}/{item.subIssues.total}

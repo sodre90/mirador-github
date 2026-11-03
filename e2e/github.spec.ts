@@ -66,6 +66,10 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     const detail = tab(page).locator(".detail");
     await expect(detail.locator(".detail-title")).toContainText("Fix canvas resize on narrow panes");
     await expect(detail).toContainText("Still clips at 360 px.");
+    const review = detail.locator(".entry.review", { hasText: "Still clips at 360 px." });
+    await expect(review.locator(".verdict")).toHaveText("requested changes");
+    await expect(review).toHaveCSS("border-top-width", "0px");
+    await expect(review.locator(".markdown")).not.toHaveCSS("color", await review.locator(".verdict").evaluate((verdict) => getComputedStyle(verdict).color));
     await detail.getByRole("tab", { name: /Checks/ }).click();
     await expect(detail.locator(".checks-list li.failed").first()).toBeVisible();
     await detail.getByRole("button", { name: "Ask the agent to fix" }).first().click();
