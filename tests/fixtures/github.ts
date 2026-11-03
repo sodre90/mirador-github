@@ -83,7 +83,7 @@ export const PRS = [
     headRefName: "phone-tabs",
     baseRefName: "main",
     reviewDecision: "REVIEW_REQUIRED",
-    reviewRequests: [],
+    reviewRequests: [{ login: "lena-ortiz" }],
     statusCheckRollup: [running("unit")],
     additions: 40,
     deletions: 0,

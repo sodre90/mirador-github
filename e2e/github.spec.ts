@@ -61,6 +61,32 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await expect(tab(page).locator(".row")).toHaveCount(3);
   });
 
+  await test.step("the Review requested chip narrows to whose review is asked, and Me is the Needs my review view", async () => {
+    await tab(page).getByRole("button", { name: "Review requested ▾" }).click();
+    await tab(page).getByRole("option", { name: "Me (sodre90)" }).click();
+    await expect(tab(page).getByRole("button", { name: /^Needs my review/ })).toHaveAttribute("aria-pressed", "true");
+    await expect(tab(page).locator(".row")).toHaveCount(1);
+    await expect(row(page, 405)).toBeVisible();
+    await tab(page).getByRole("button", { name: "Review requested: @me ▾" }).click();
+    await tab(page).getByRole("option", { name: "lena-ortiz" }).click();
+    await expect(tab(page).getByLabel("Search")).toHaveValue("is:open review-requested:lena-ortiz");
+    await expect(tab(page).locator(".row")).toHaveCount(1);
+    await expect(row(page, 409)).toBeVisible();
+    await tab(page).getByRole("button", { name: /^All open/ }).click();
+  });
+
+  await test.step("a menu at the frame's right edge opens toward the left, so all of it shows", async () => {
+    await tab(page).locator(".filters").evaluate((filters) => ((filters as HTMLElement).style.justifyContent = "flex-end"));
+    await tab(page).getByRole("button", { name: "Sort ▾" }).click();
+    const menu = tab(page).locator(".popover");
+    await expect(menu.getByRole("option", { name: "Least recently updated" })).toBeVisible();
+    const { left, right, frameWidth } = await menu.evaluate((element) => ({ ...element.getBoundingClientRect().toJSON(), frameWidth: document.documentElement.clientWidth }));
+    expect(left).toBeGreaterThanOrEqual(0);
+    expect(right).toBeLessThanOrEqual(frameWidth);
+    await tab(page).getByLabel("Search").click();
+    await tab(page).locator(".filters").evaluate((filters) => ((filters as HTMLElement).style.justifyContent = ""));
+  });
+
   await test.step("a pull request shows beside the list, with its checks and files", async () => {
     await row(page, 405).click();
     const detail = tab(page).locator(".detail");

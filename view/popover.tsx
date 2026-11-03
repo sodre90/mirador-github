@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-/** A button that opens a panel under it, closed by a click outside it or Escape. */
+/** A button that opens a panel under it, toward the side the frame has room on, closed by a click outside it or Escape. */
 export function Popover({
   label,
   name,
@@ -18,7 +18,15 @@ export function Popover({
   align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
+  const [side, setSide] = useState(align);
   const root = useRef<HTMLSpanElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = panel.current?.getBoundingClientRect();
+    if (!open || !box) return setSide(align);
+    const overflows = align === "left" ? box.right > document.documentElement.clientWidth : box.left < 0;
+    if (overflows) setSide(align === "left" ? "right" : "left");
+  }, [open, align]);
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
@@ -41,7 +49,11 @@ export function Popover({
       <button type="button" className={`${className} ${open ? "open" : ""}`} aria-label={name} aria-expanded={open} data-hint={open ? undefined : hint} onClick={() => setOpen((was) => !was)}>
         {label}
       </button>
-      {open && <div className={`popover ${align}`}>{children(() => setOpen(false))}</div>}
+      {open && (
+        <div className={`popover ${side}`} ref={panel}>
+          {children(() => setOpen(false))}
+        </div>
+      )}
     </span>
   );
 }

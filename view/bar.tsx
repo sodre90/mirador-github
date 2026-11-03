@@ -184,6 +184,13 @@ export function FilterBar() {
       <Chip name="Assignee" value={one("assignee")}>
         {(close) => <PickList options={personOptions} chosen={valuesOf(query, "assignee")} multiple={false} filterLabel="Filter people" onChange={(chosen) => (change(withValues(query, "assignee", chosen)), close())} />}
       </Chip>
+      {kind === "pr" && (
+        <Chip name="Review requested" value={one("review-requested")}>
+          {(close) => (
+            <PickList options={personOptions} chosen={valuesOf(query, "review-requested")} multiple={false} filterLabel="Filter people" onChange={(chosen) => (change(withValues(query, "review-requested", chosen)), close())} />
+          )}
+        </Chip>
+      )}
       <Chip name="Label" value={valuesOf(query, "label").join(", ") || null}>
         {() => (
           <PickList
