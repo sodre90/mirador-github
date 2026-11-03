@@ -27,7 +27,7 @@ function WorkOnThis({ item, detail }: { item: ListItem; detail: DetailData | nul
       <button type="button" className="button primary" data-hint="Start a conversation in this workspace that works on it (w)" onClick={start} id="work-on-this">
         Work on this
       </button>
-      <Popover className="button primary split-arrow" label="▾" hint="More ways to hand it to the agent" align="left">
+      <Popover className="button primary split-arrow" label="▾" name="More ways to hand it to the agent" hint="More ways to hand it to the agent" align="left">
         {(close) => (
           <div className="menu wide">
             <button type="button" onClick={() => (close(), start())}>
@@ -97,7 +97,7 @@ function Actions({ item, detail }: { item: ListItem; detail: DetailData | null }
           {open ? "Close…" : "Reopen…"}
         </button>
       )}
-      <Popover className="button icon-like" label="⋯" hint="More" align="right">
+      <Popover className="button icon-like" label="⋯" name="More" hint="More" align="right">
         {(close) => (
           <div className="menu">
             {item.kind === "pr" && (

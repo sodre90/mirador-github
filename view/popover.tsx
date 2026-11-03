@@ -3,12 +3,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 /** A button that opens a panel under it, closed by a click outside it or Escape. */
 export function Popover({
   label,
+  name,
   className = "",
   hint,
   children,
   align = "left",
 }: {
   label: ReactNode;
+  /** The button's accessible name, for a label that is only a symbol. */
+  name?: string;
   className?: string;
   hint?: string;
   children: (close: () => void) => ReactNode;
@@ -35,7 +38,7 @@ export function Popover({
   }, [open]);
   return (
     <span className="popover-root" ref={root}>
-      <button type="button" className={`${className} ${open ? "open" : ""}`} aria-expanded={open} data-hint={hint} onClick={() => setOpen((was) => !was)}>
+      <button type="button" className={`${className} ${open ? "open" : ""}`} aria-label={name} aria-expanded={open} data-hint={open ? undefined : hint} onClick={() => setOpen((was) => !was)}>
         {label}
       </button>
       {open && <div className={`popover ${align}`}>{children(() => setOpen(false))}</div>}

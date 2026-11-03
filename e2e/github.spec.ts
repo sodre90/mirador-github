@@ -75,6 +75,20 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await expect(detail.locator(".file-row").first()).toBeVisible();
   });
 
+  await test.step("the symbol-only menu buttons have names, and drop their hint while their menu is open", async () => {
+    const detail = tab(page).locator(".detail");
+    const handOff = detail.getByRole("button", { name: "More ways to hand it to the agent" });
+    await expect(handOff).toHaveAttribute("data-hint", "More ways to hand it to the agent");
+    await handOff.click();
+    await expect(handOff).toHaveAttribute("aria-expanded", "true");
+    await expect(handOff).not.toHaveAttribute("data-hint");
+    await handOff.click();
+    const more = detail.getByRole("button", { name: "More", exact: true });
+    await more.click();
+    await expect(more).not.toHaveAttribute("data-hint");
+    await more.click();
+  });
+
   await test.step("a comment shows the gh command it runs, and appears once posted", async () => {
     await tab(page).locator(".detail").getByRole("tab", { name: /Conversation/ }).click();
     await tab(page).locator("#comment-button").click();
