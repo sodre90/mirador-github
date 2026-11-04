@@ -20,7 +20,8 @@ function useHandOff() {
 function WorkOnThis({ item, detail }: { item: ListItem; detail: DetailData | null }) {
   const tab = useTab();
   const handOff = useHandOff();
-  const text = () => workText(tab.repo, item, detail);
+  const text = () => workText(tab.repo, item, detail, tab.state.prompts);
+  const review = () => reviewText(tab.repo, item, detail, tab.state.prompts);
   const start = () => handOff(() => window.mirador.startConversation(text()), "Started a conversation on it");
   return (
     <span className="split-button">
@@ -43,11 +44,27 @@ function WorkOnThis({ item, detail }: { item: ListItem; detail: DetailData | nul
               <small>Adds “{mentionText(tab.repo, item).slice(0, 48)}…” to what you're writing</small>
             </button>
             {item.kind === "pr" && (
-              <button type="button" onClick={() => (close(), handOff(() => window.mirador.startConversation(reviewText(tab.repo, item)), "Started a conversation that reviews it"))}>
+              <button type="button" onClick={() => (close(), handOff(() => window.mirador.startConversation(review()), "Started a conversation that reviews it"))}>
                 <b>Review with the agent</b>
                 <small>A new conversation reviews the diff and shows its review on the canvas</small>
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                tab.showSheet({
+                  kind: "edit-message",
+                  messages: [
+                    ...(item.kind === "pr" ? [{ label: "Review it", text: review(), sends: ["new" as const] }] : []),
+                    { label: "Work on it", text: text(), sends: ["new" as const, "here" as const] },
+                  ],
+                });
+              }}
+            >
+              <b>Edit the message first…</b>
+              <small>Change what the agent gets, this once</small>
+            </button>
           </div>
         )}
       </Popover>
@@ -219,7 +236,7 @@ function Checks({ item, checks }: { item: ListItem; checks: Check[] }) {
                 </button>
               )}
               {check.state === "failed" && (
-                <button type="button" className="link strong" onClick={() => handOff(() => window.mirador.prompt(fixCheckText(tab.repo, item, check)), "Asked the agent to fix it")}>
+                <button type="button" className="link strong" onClick={() => handOff(() => window.mirador.prompt(fixCheckText(tab.repo, item, check, tab.state.prompts)), "Asked the agent to fix it")}>
                   Ask the agent to fix
                 </button>
               )}
@@ -240,7 +257,7 @@ function Files({ detail }: { detail: DetailData }) {
         <span className="muted">
           {files.length} files · {detail.commits ?? 0} commits · <span className="added">+{detail.additions}</span> <span className="removed">−{detail.deletions}</span>
         </span>
-        <button type="button" className="button" onClick={() => handOff(() => window.mirador.startConversation(reviewText(tab.repo, detail)), "Started a conversation that reviews it")}>
+        <button type="button" className="button" onClick={() => handOff(() => window.mirador.startConversation(reviewText(tab.repo, detail, detail, tab.state.prompts)), "Started a conversation that reviews it")}>
           Review with the agent
         </button>
       </div>

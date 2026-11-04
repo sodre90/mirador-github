@@ -164,6 +164,43 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     expect(branch).toBe("phone-tabs");
   });
 
+  await test.step("a workspace's own review prompt is kept for it, and every workspace's stays the built-in", async () => {
+    await tab(page).locator(".repo-button").click();
+    await tab(page).getByRole("button", { name: "Prompts for the agent…" }).click();
+    await sheet(page).getByLabel("Prompt", { exact: true }).selectOption({ label: "Review a pull request" });
+    await sheet(page).getByLabel("Prompt text").fill("Review {ref} against the team checklist: {url}");
+    await sheet(page).getByRole("button", { name: "Save" }).click();
+    await expect(tab(page).locator(".toast")).toHaveText("Saved the prompt");
+    await expect(sheet(page).locator(".sheet-about")).toContainText("This workspace uses this workspace's own text.");
+    await sheet(page).getByRole("button", { name: "Every workspace" }).click();
+    await expect(sheet(page).getByLabel("Prompt text")).toHaveValue(/Review it for correctness, design and tests/);
+    await expect(sheet(page).locator(".sheet-about")).toContainText("This workspace has its own text");
+    await sheet(page).getByRole("button", { name: "Close" }).click();
+  });
+
+  await test.step("Edit the message first changes what this one review asks, not the saved prompt", async () => {
+    const detail = tab(page).locator(".detail");
+    await detail.getByRole("button", { name: "More ways to hand it to the agent" }).click();
+    await detail.getByRole("button", { name: /Edit the message first/ }).click();
+    await expect(sheet(page).getByRole("button", { name: "Review it" })).toHaveAttribute("aria-pressed", "true");
+    const message = sheet(page).getByLabel("Message", { exact: true });
+    await expect(message).toHaveValue("Review acme/widgets#409 against the team checklist: https://github.com/acme/widgets/pull/409");
+    await message.fill("Review acme/widgets#409 against the team checklist: https://github.com/acme/widgets/pull/409 Only the tests, please.");
+    const previousUrl = page.url();
+    await sheet(page).getByRole("button", { name: "Start a conversation" }).click();
+    await expect(page).not.toHaveURL(previousUrl);
+    await expect.poll(agentSaw).toContain("against the team checklist: https://github.com/acme/widgets/pull/409 Only the tests, please.");
+    await gitHubToggle(page).click();
+    await tab(page).locator(".repo-button").click();
+    await tab(page).getByRole("button", { name: "Prompts for the agent…" }).click();
+    await sheet(page).getByLabel("Prompt", { exact: true }).selectOption({ label: "Review a pull request" });
+    await expect(sheet(page).getByLabel("Prompt text")).toHaveValue("Review {ref} against the team checklist: {url}");
+    await sheet(page).getByRole("button", { name: "Put back the built-in" }).click();
+    await expect(sheet(page).getByLabel("Prompt text")).toHaveValue(/Review it for correctness, design and tests/);
+    await expect(sheet(page).locator(".sheet-about")).toContainText("This workspace uses the built-in text.");
+    await sheet(page).getByRole("button", { name: "Close" }).click();
+  });
+
   await test.step("when gh is signed out the tab says how to sign in, and comes back once it is", async () => {
     gh.change((state) => (state.signedIn = false));
     await tab(page).getByRole("button", { name: "Refresh" }).click();

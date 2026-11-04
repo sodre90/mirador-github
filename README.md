@@ -7,6 +7,7 @@ A [Mirador](https://github.com/sodre90/mirador) plugin: the issues and pull requ
 - **List and detail side by side.** The list shows checks, review state, linked PRs, sub-issues and assignees at a glance; the PR of the branch checked out here is pinned first. The detail has the conversation, checks and changed files.
 - **Act on them.** Comment, review, merge, close or reopen, labels, assignees, ready for review, new issue, and check out a PR into the workspace. Each asks first and shows the `gh` command it runs.
 - **Work on this.** Start a conversation on an issue or PR, send it to the current conversation, mention it in the composer, review a PR with the agent, or ask the agent to fix a failing check.
+- **Your own prompts.** The repository's menu → Prompts for the agent… changes what each of those sends, for this workspace or every workspace, with placeholders such as `{ref}`, `{url}` and `{description}`. Edit the message first… changes a single one before it goes.
 - **Fresh.** The list refreshes when the tab opens, every two minutes while it's visible, and after every action.
 - **Keys.** `j` `k` move, `/` searches, `r` refreshes, `w` works on it, `c` comments, `o` opens it on GitHub.
 

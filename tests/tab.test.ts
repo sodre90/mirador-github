@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WorkspaceTabContext } from "../mirador/api.ts";
 import { detailKey, listKey, type CheckoutReply, type TabState } from "../github/model.ts";
+import { PROMPTS } from "../github/prompts.ts";
 import { GitHubTab } from "../github/tab.ts";
 import type { Runner } from "../github/run.ts";
 import { FakeGitHub } from "./fake-gh.ts";
@@ -29,11 +30,12 @@ function setUp(git: Partial<Git> = {}) {
   const folder = mkdtempSync(join(tmpdir(), "mirador-github-"));
   mkdirSync(join(folder, ".git"));
   const stored = new Map<string, unknown>();
+  const shared = new Map<string, unknown>();
   let changes = 0;
   const context: WorkspaceTabContext = {
     workspace: { id: "w1", name: "widgets", folder },
     storage: { get: (key) => stored.get(key), set: (key, value) => void (value === undefined ? stored.delete(key) : stored.set(key, value)) },
-    sharedStorage: { get: () => undefined, set: () => {} },
+    sharedStorage: { get: (key) => shared.get(key), set: (key, value) => void (value === undefined ? shared.delete(key) : shared.set(key, value)) },
     changed: () => void changes++,
   };
   const tab = new GitHubTab(run);
@@ -170,5 +172,20 @@ describe("the user's actions", () => {
     await act({ kind: "refresh", list: { kind: "pr", query: "is:open" }, counts: null });
     await act({ kind: "disconnect" });
     expect(await state()).toMatchObject({ connection: null, lists: {}, meta: null });
+  });
+});
+
+describe("the messages the tab sends", () => {
+  test("keep only the user's own text, for this workspace or every workspace, and put back takes it out", async () => {
+    const { state, act } = setUp();
+    await act({ kind: "set-prompt", scope: "every", prompt: "review", text: "Review {ref} for security." });
+    await act({ kind: "set-prompt", scope: "workspace", prompt: "review", text: "Review {ref} the way this team does." });
+    expect((await state()).prompts).toEqual({ workspace: { review: "Review {ref} the way this team does." }, every: { review: "Review {ref} for security." } });
+    await act({ kind: "set-prompt", scope: "workspace", prompt: "review", text: "Review {ref} for security." });
+    expect((await state()).prompts.workspace).toEqual({});
+    await act({ kind: "set-prompt", scope: "every", prompt: "review", text: null });
+    await act({ kind: "set-prompt", scope: "every", prompt: "work-pr", text: PROMPTS["work-pr"].builtIn });
+    expect((await state()).prompts).toEqual({ workspace: {}, every: {} });
+    await expect(act({ kind: "set-prompt", scope: "every", prompt: "nonsense", text: "x" })).rejects.toThrow("no message");
   });
 });

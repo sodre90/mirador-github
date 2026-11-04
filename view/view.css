@@ -1437,3 +1437,55 @@ label:has(> input[type="checkbox"]) {
   background: var(--danger);
   color: #fff;
 }
+
+.prompt-picks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.segmented button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 10px;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--line);
+}
+
+.segmented button.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.prompt-text {
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+  font-family: var(--mirador-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.9em;
+  line-height: 1.45;
+}
+
+.placeholders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.placeholders .chip {
+  font-family: var(--mirador-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.85em;
+}

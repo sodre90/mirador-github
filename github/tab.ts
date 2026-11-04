@@ -20,6 +20,7 @@ import {
 } from "./model.ts";
 import { issueDetail, issueItem, prDetail, prItem } from "./normalize.ts";
 import { BUILT_IN_VIEWS, DEFAULT_QUERY } from "./query.ts";
+import { promptLevelOf, PROMPTS, withPrompt, type PromptOverrides } from "./prompts.ts";
 import { parseRepo, remoteCandidates, type RemoteCandidate, type RepoRef } from "./remote.ts";
 import { ProgramMissing, spawnRunner, type Ran, type Runner } from "./run.ts";
 
@@ -105,6 +106,10 @@ export class GitHubTab implements WorkspaceTab<TabState> {
     return cache;
   }
 
+  private promptsOf(context: WorkspaceTabContext): PromptOverrides {
+    return { workspace: promptLevelOf(context.storage.get("prompts")), every: promptLevelOf(context.sharedStorage.get("prompts")) };
+  }
+
   private connectionOf(context: WorkspaceTabContext): RepoRef | null {
     const stored = context.storage.get("connection");
     return isRepo(stored) ? stored : null;
@@ -131,6 +136,7 @@ export class GitHubTab implements WorkspaceTab<TabState> {
       details: Object.fromEntries(cache.details),
       savedViews: savedViewsOf(context.storage.get("savedViews")),
       prefs: prefsOf(context.storage.get("prefs")),
+      prompts: this.promptsOf(context),
       loading: [...cache.loading],
     };
   }
@@ -160,6 +166,13 @@ export class GitHubTab implements WorkspaceTab<TabState> {
       case "remove-view": {
         const views = savedViewsOf(context.storage.get("savedViews"));
         context.storage.set("savedViews", { ...views, [asked.item]: views[asked.item].filter(({ name }) => name !== asked.name) });
+        context.changed();
+        return null;
+      }
+      case "set-prompt": {
+        if (!(asked.prompt in PROMPTS)) throw new Error(`The GitHub tab has no message ${JSON.stringify(asked.prompt)}.`);
+        const storage = asked.scope === "every" ? context.sharedStorage : context.storage;
+        storage.set("prompts", withPrompt(this.promptsOf(context), asked.scope, asked.prompt, asked.text));
         context.changed();
         return null;
       }

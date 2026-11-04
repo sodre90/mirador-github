@@ -22,7 +22,16 @@ export type Sheet =
   | { kind: "ready"; item: ListItem; ready: boolean }
   | { kind: "checkout"; item: ListItem }
   | { kind: "new-issue" }
-  | { kind: "save-view"; item: ItemKind; query: string };
+  | { kind: "save-view"; item: ItemKind; query: string }
+  | { kind: "prompts" }
+  | { kind: "edit-message"; messages: Message[] };
+
+/** A message to the agent, filled in, and where it can go. */
+export interface Message {
+  label: string;
+  text: string;
+  sends: ("new" | "here")[];
+}
 
 /** What every part of the tab reaches: the host's state for the workspace, and the user's place in it. */
 export interface Tab {

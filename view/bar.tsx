@@ -43,6 +43,9 @@ export function TopBar() {
             <button type="button" onClick={() => (window.mirador.openLink(repoUrl(repo)), close())}>
               Open on {repo.host}
             </button>
+            <button type="button" onClick={() => (close(), tab.showSheet({ kind: "prompts" }))}>
+              Prompts for the agent…
+            </button>
             <button
               type="button"
               className="danger"

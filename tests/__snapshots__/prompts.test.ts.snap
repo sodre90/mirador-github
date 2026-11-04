@@ -1,0 +1,61 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the built-in messages read as they always have 1`] = `
+{
+  "fixCheck": 
+"The check "e2e (ubuntu)" fails on pull request acme/widgets#405: "Fix canvas resize on narrow panes".
+
+https://github.com/acme/widgets/actions/runs/1/job/e2e (ubuntu)
+
+Find out why, e.g. with \`gh pr checks 405 -R acme/widgets\` and \`gh run view --log-failed\`, and fix it on the branch fix-resize."
+,
+  "fixCheckNoBranch": 
+"The check "e2e (ubuntu)" fails on pull request acme/widgets#409: "Phone tab bar".
+
+https://github.com/acme/widgets/pull/409
+
+Find out why, e.g. with \`gh pr checks 409 -R acme/widgets\` and \`gh run view --log-failed\`, and fix it."
+,
+  "issueWithBody": 
+"Work on GitHub issue acme/widgets#60: "Plugins gallery in the main UI"
+
+https://github.com/acme/widgets/issues/60
+
+Plugins hide in Settings. Give them a place of their own.
+
+Read its comments with \`gh issue view 60 -R acme/widgets --comments\`. Don't post to GitHub unless I ask."
+,
+  "issueWithout": 
+"Work on GitHub issue acme/widgets#25: "Fork title gets (fork) at each rewind"
+
+https://github.com/acme/widgets/issues/25
+
+Read its comments with \`gh issue view 25 -R acme/widgets --comments\`. Don't post to GitHub unless I ask."
+,
+  "prBare": 
+"Work on pull request acme/widgets#409: "Phone tab bar"
+
+https://github.com/acme/widgets/pull/409
+
+Read its reviews and comments with \`gh pr view 409 -R acme/widgets --comments\`, and its diff with \`gh pr diff 409 -R acme/widgets\`. Don't post to GitHub unless I ask."
+,
+  "prWithChecks": 
+"Work on pull request acme/widgets#405: "Fix canvas resize on narrow panes" (fix-resize → main)
+
+https://github.com/acme/widgets/pull/405
+
+Checks: 1 failing (e2e (ubuntu)). Review: changes requested.
+
+Narrow panes clipped the bar.
+
+Read its reviews and comments with \`gh pr view 405 -R acme/widgets --comments\`, and its diff with \`gh pr diff 405 -R acme/widgets\`. Don't post to GitHub unless I ask."
+,
+  "review": 
+"Review pull request acme/widgets#405: "Fix canvas resize on narrow panes"
+
+https://github.com/acme/widgets/pull/405
+
+Get its diff with \`gh pr diff 405 -R acme/widgets\` and its description with \`gh pr view 405 -R acme/widgets\`. Review it for correctness, design and tests, and publish your review on the canvas with the review tool. Don't post anything to GitHub."
+,
+}
+`;

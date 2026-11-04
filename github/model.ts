@@ -1,3 +1,4 @@
+import type { PromptKind, PromptOverrides, PromptScope } from "./prompts.ts";
 import type { RemoteCandidate, RepoRef } from "./remote.ts";
 
 export type ItemKind = "pr" | "issue";
@@ -154,6 +155,7 @@ export interface TabState {
   details: Record<string, DetailResult>;
   savedViews: Record<ItemKind, SavedView[]>;
   prefs: Prefs;
+  prompts: PromptOverrides;
   /** The lists and details being fetched now, by their keys. */
   loading: string[];
 }
@@ -179,7 +181,8 @@ export type TabAction =
   | { kind: "assignees"; item: ItemKind; number: number; add: string[]; remove: string[] }
   | { kind: "ready"; number: number; ready: boolean }
   | { kind: "checkout"; number: number; evenIfChanged: boolean }
-  | { kind: "create-issue"; title: string; body: string };
+  | { kind: "create-issue"; title: string; body: string }
+  | { kind: "set-prompt"; scope: PromptScope; prompt: PromptKind; text: string | null };
 
 /** What a checkout answers: done, or the working tree's changes it would stand on, for the user to decide. */
 export type CheckoutReply = { checkedOut: true; branch: string | null } | { checkedOut: false; changedFiles: string[] };
