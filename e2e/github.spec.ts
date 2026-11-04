@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { helpers, startHostWithThisPlugin, type TestHost } from "./mirador.ts";
 
@@ -21,6 +22,11 @@ test.afterAll(async () => {
 const tab = (page: Page) => page.frameLocator(".canvas-panel:visible .canvas-frame.workspace-tab iframe");
 const sheet = (page: Page) => tab(page).getByRole("dialog");
 const gitHubToggle = (page: Page) => page.locator(".canvas-panel:visible .workspace-tab-toggle", { hasText: "GitHub" });
+/** With GITHUB_SCREENSHOTS naming a folder, the canvas pane as the step leaves it, for the README and the plugin store. */
+const shoot = async (page: Page, name: string) => {
+  const folder = process.env.GITHUB_SCREENSHOTS;
+  if (folder) await page.locator(".canvas-panel:visible").screenshot({ path: join(folder, `${name}.png`) });
+};
 const row = (page: Page, number: number) => tab(page).locator(`.row[data-number="${number}"]`);
 
 async function openConversation(page: Page) {
@@ -59,6 +65,7 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await expect(row(page, 405)).toHaveCount(0);
     await tab(page).getByRole("button", { name: /^All open/ }).click();
     await expect(tab(page).locator(".row")).toHaveCount(3);
+    await shoot(page, "list");
   });
 
   await test.step("the Review requested chip narrows to whose review is asked, and Me is the Needs my review view", async () => {
@@ -98,6 +105,7 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await expect(review.locator(".markdown")).not.toHaveCSS("color", await review.locator(".verdict").evaluate((verdict) => getComputedStyle(verdict).color));
     await detail.getByRole("tab", { name: /Checks/ }).click();
     await expect(detail.locator(".checks-list li.failed").first()).toBeVisible();
+    await shoot(page, "checks");
     await detail.getByRole("button", { name: "Ask the agent to fix" }).first().click();
     await expect.poll(agentSaw).toContain("#405");
     await expect(page.locator(".chat-header:visible .badge")).toHaveText("idle", { timeout: 60_000 });
@@ -172,6 +180,7 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await sheet(page).getByRole("button", { name: "Save" }).click();
     await expect(tab(page).locator(".toast")).toHaveText("Saved the prompt");
     await expect(sheet(page).locator(".sheet-about")).toContainText("This workspace uses this workspace's own text.");
+    await shoot(page, "prompts");
     await sheet(page).getByRole("button", { name: "Every workspace" }).click();
     await expect(sheet(page).getByLabel("Prompt text")).toHaveValue(/Review it for correctness, design and tests/);
     await expect(sheet(page).locator(".sheet-about")).toContainText("This workspace has its own text");

@@ -2,6 +2,8 @@
 
 A [Mirador](https://github.com/sodre90/mirador) plugin: the issues and pull requests of a workspace's GitHub repository, in a tab beside the chat, where you find them, read them, act on them and hand them to the agent.
 
+![A pull request beside the list, with its failing check](docs/checks.png)
+
 - **Connects by itself.** The tab finds the repository in the workspace folder's git remotes and connects once you confirm. github.com and GitHub Enterprise both work.
 - **Views and filters.** Built-in views (Needs my review, Mine, Assigned to me, Failing checks…) with their counts, chips for state, author, assignee, review requested, label, checks, draft and sort, and a search box that takes any GitHub search. Save a search as a view of your own.
 - **List and detail side by side.** The list shows checks, review state, linked PRs, sub-issues and assignees at a glance; the PR of the branch checked out here is pinned first. The detail has the conversation, checks and changed files.
@@ -10,6 +12,10 @@ A [Mirador](https://github.com/sodre90/mirador) plugin: the issues and pull requ
 - **Your own prompts.** The repository's menu → Prompts for the agent… changes what each of those sends, for this workspace or every workspace, with placeholders such as `{ref}`, `{url}` and `{description}`. Edit the message first… changes a single one before it goes.
 - **Fresh.** The list refreshes when the tab opens, every two minutes while it's visible, and after every action.
 - **Keys.** `j` `k` move, `/` searches, `r` refreshes, `w` works on it, `c` comments, `o` opens it on GitHub.
+
+![The open pull requests, with their checks and reviews](docs/list.png)
+
+![A workspace's own text for the review prompt](docs/prompts.png)
 
 Everything goes through the [GitHub CLI](https://cli.github.com) signed in on your computer (`gh auth login`); the plugin keeps no tokens. It needs Mirador with plugin API 7.
 
