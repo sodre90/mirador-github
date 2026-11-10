@@ -1223,6 +1223,14 @@ h2 {
   padding-left: 22px;
 }
 
+.markdown [align="right"] {
+  text-align: right;
+}
+
+.markdown [align="center"] {
+  text-align: center;
+}
+
 .picture-link::before {
   content: "🖼 ";
 }

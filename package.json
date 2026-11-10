@@ -9,9 +9,12 @@
     "e2e": "scripts/e2e.sh"
   },
   "dependencies": {
+    "gemoji": "^8.1.0",
     "react": "19",
     "react-dom": "19",
     "react-markdown": "10",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
