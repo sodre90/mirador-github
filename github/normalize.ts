@@ -93,7 +93,7 @@ export function summaryOf(checks: Check[]): ChecksSummary {
 const reviewDecisionOf = (value: unknown): ReviewDecision =>
   ({ APPROVED: "approved", CHANGES_REQUESTED: "changes-requested", REVIEW_REQUIRED: "review-required" } as const)[text(value) as "APPROVED"] ?? null;
 
-const requestedOf = (value: unknown) => list(value).map((request) => text(record(request).login) || text(record(request).name) || text(record(request).slug)).filter(Boolean);
+const requestedOf = (value: unknown) => list(value).map((request) => text(record(request).login) || text(record(request).slug) || text(record(request).name)).filter(Boolean);
 
 const numbersOf = (value: unknown) => list(value).map((reference) => count(record(reference).number)).filter((number) => number > 0);
 

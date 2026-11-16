@@ -1,15 +1,17 @@
-import { ISSUES, LABELS, PRS, REPO, VIEWER } from "./fixtures/github.ts";
+import { ISSUES, LABELS, PRS, REPO, VIEWER, VIEWER_TEAMS } from "./fixtures/github.ts";
 
 /**
  * Answers gh's commands about acme/widgets from the fixtures, as gh would, and keeps what the writes change, so a test
- * sees a comment it posted or a PR it merged. Searches understand is:, author:, assignee:, label: and
- * review-requested:, enough for the views.
+ * sees a comment it posted or a PR it merged. Searches understand is:, author:, assignee:, label:, review-requested:
+ * (as advanced search has it: the viewer, not their teams), user-review-requested:, team-review-requested:, a word's
+ * - and a (… OR …) group, enough for the views. A server without advanced search refuses ISSUE_ADVANCED.
  */
 export class FakeGitHub {
   prs = structuredClone(PRS) as Record<string, unknown>[];
   issues = structuredClone(ISSUES) as Record<string, unknown>[];
   signedIn = true;
   checkedOut: number | null = null;
+  advancedSearch = true;
 
   answer(args: string[]): { code: number; stdout: string; stderr: string } {
     if (!this.signedIn) return { code: 4, stdout: "", stderr: "To get started with GitHub CLI, please run:  gh auth login" };
@@ -26,10 +28,14 @@ export class FakeGitHub {
     const missing = (kind: string, number: string | undefined) => ({ code: 1, stdout: "", stderr: `GraphQL: Could not resolve to a ${kind === "pr" ? "PullRequest" : "Issue"} with the number of ${number}.` });
 
     if (group === "api" && command === "user") return ok(`${VIEWER}\n`);
+    if (group === "api" && command === "user/teams") return ok(VIEWER_TEAMS.map((team) => `${team}\n`).join(""));
     if (group === "api" && command === "graphql") {
       const query = flag("-f") ?? "";
+      if (query.includes('__type(name: "SearchType")')) return ok(["ISSUE", ...(this.advancedSearch ? ["ISSUE_ADVANCED"] : []), "REPOSITORY", "USER", "DISCUSSION"].map((type) => `${type}\n`).join(""));
+      const searches = [...query.matchAll(/(q\d+): search\(type: (ISSUE|ISSUE_ADVANCED), query: ("(?:[^"\\]|\\.)*")\)/g)];
+      if (!this.advancedSearch && searches.some(([, , type]) => type === "ISSUE_ADVANCED")) return { code: 1, stdout: "", stderr: "gh: Argument 'type' on Field 'search' has an invalid value (ISSUE_ADVANCED)." };
       const data = Object.fromEntries(
-        [...query.matchAll(/(q\d+): search\(type: ISSUE, query: ("(?:[^"\\]|\\.)*")\)/g)].map(([, alias, search]) => {
+        searches.map(([, alias, , search]) => {
           const text = JSON.parse(search!) as string;
           const kind = text.includes("is:pr") ? "pr" : "issue";
           return [alias, { issueCount: this.search(items(kind), text).length }];
@@ -105,38 +111,43 @@ export class FakeGitHub {
   }
 
   private search(items: Record<string, unknown>[], query: string) {
-    const terms = query.split(/\s+/).filter(Boolean);
+    const anyOfGroups = [...query.matchAll(/\(([^()]*)\)/g)].map(([, group]) => group!.split(/\s+OR\s+/).map((term) => term.trim()));
+    const terms = query.replace(/\([^()]*\)/g, " ").split(/\s+/).filter(Boolean);
+    return items.filter((item) => terms.every((term) => this.matches(item, term)) && anyOfGroups.every((anyOf) => anyOf.some((term) => this.matches(item, term))));
+  }
+
+  private matches(item: Record<string, unknown>, term: string): boolean {
+    if (term.startsWith("-")) return !this.matches(item, term.slice(1));
     const me = (value: string) => (value === "@me" ? VIEWER : value);
-    const logins = (value: unknown) => (value as { login: string }[]).map(({ login }) => login);
-    return items.filter((item) =>
-      terms.every((term) => {
-        const [key, raw = ""] = term.includes(":") ? [term.slice(0, term.indexOf(":")), term.slice(term.indexOf(":") + 1)] : ["", term];
-        const value = me(raw.replace(/^"(.*)"$/, "$1"));
-        switch (key) {
-          case "is":
-            if (value === "pr" || value === "issue") return true;
-            if (value === "draft") return item.isDraft === true;
-            return String(item.state).toLowerCase() === value;
-          case "repo":
-            return true;
-          case "author":
-            return (item.author as { login: string }).login === value;
-          case "assignee":
-            return logins(item.assignees).includes(value);
-          case "review-requested":
-            return logins(item.reviewRequests ?? []).includes(value);
-          case "label":
-            return (item.labels as { name: string }[]).some(({ name }) => name === value);
-          case "no":
-            return value === "assignee" ? (item.assignees as unknown[]).length === 0 : true;
-          case "status":
-            return JSON.stringify(item.statusCheckRollup ?? []).includes(value === "failure" ? "FAILURE" : "SUCCESS");
-          case "":
-            return String(item.title).toLowerCase().includes(value.toLowerCase());
-          default:
-            return true;
-        }
-      }),
-    );
+    const logins = (value: unknown) => (value as { login?: string }[]).map(({ login }) => login);
+    const [key, raw = ""] = term.includes(":") ? [term.slice(0, term.indexOf(":")), term.slice(term.indexOf(":") + 1)] : ["", term];
+    const value = me(raw.replace(/^"(.*)"$/, "$1"));
+    switch (key) {
+      case "is":
+        if (value === "pr" || value === "issue") return true;
+        if (value === "draft") return item.isDraft === true;
+        return String(item.state).toLowerCase() === value;
+      case "repo":
+        return true;
+      case "author":
+        return (item.author as { login: string }).login === value;
+      case "assignee":
+        return logins(item.assignees).includes(value);
+      case "review-requested":
+      case "user-review-requested":
+        return logins(item.reviewRequests ?? []).includes(value);
+      case "team-review-requested":
+        return ((item.reviewRequests ?? []) as { slug?: string }[]).some(({ slug }) => slug === value);
+      case "label":
+        return (item.labels as { name: string }[]).some(({ name }) => name === value);
+      case "no":
+        return value === "assignee" ? (item.assignees as unknown[]).length === 0 : true;
+      case "status":
+        return JSON.stringify(item.statusCheckRollup ?? []).includes(value === "failure" ? "FAILURE" : "SUCCESS");
+      case "":
+        return String(item.title).toLowerCase().includes(value.toLowerCase());
+      default:
+        return true;
+    }
   }
 }

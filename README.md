@@ -5,7 +5,7 @@ A [Mirador](https://github.com/sodre90/mirador) plugin: the issues and pull requ
 ![A pull request beside the list, with its failing check](docs/checks.png)
 
 - **Connects by itself.** The tab finds the repository in the workspace folder's git remotes and connects once you confirm. github.com and GitHub Enterprise both work.
-- **Views and filters.** Built-in views (Needs my review, Mine, Assigned to me, Failing checks…) with their counts, chips for state, author, assignee, review requested, label, checks, draft and sort, and a search box that takes any GitHub search. Save a search as a view of your own.
+- **Views and filters.** Built-in views (Needs my review, Team reviews for what asks a team of yours, Mine, Assigned to me, Failing checks…) with their counts, chips for state, author, assignee, review requested, label, checks, draft and sort, and a search box that takes any GitHub search. Save a search as a view of your own.
 - **List and detail side by side.** The list shows checks, review state, linked PRs, sub-issues and assignees at a glance; the PR of the branch checked out here is pinned first. The detail has the conversation, checks and changed files.
 - **Act on them.** Comment, review, merge, close or reopen, labels, assignees, ready for review, new issue, and check out a PR into the workspace. Each asks first and shows the `gh` command it runs.
 - **Work on this.** Start a conversation on an issue or PR, send it to the current conversation, mention it in the composer, review a PR with the agent, or ask the agent to fix a failing check.

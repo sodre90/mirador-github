@@ -22,7 +22,7 @@ export const PRS = [
     headRefName: "drag-queue",
     baseRefName: "main",
     reviewDecision: "APPROVED",
-    reviewRequests: [],
+    reviewRequests: [{ __typename: "Team", name: "widgets-core", slug: "acme/widgets-core" }],
     statusCheckRollup: [passed("typecheck"), passed("unit")],
     additions: 120,
     deletions: 34,
@@ -162,3 +162,6 @@ export const LABELS = [
 ];
 
 export const VIEWER = "sodre90";
+
+/** The viewer's teams, of every organization, as gh api user/teams --jq gives them. */
+export const VIEWER_TEAMS = ["acme/widgets-core", "other-org/infra"];

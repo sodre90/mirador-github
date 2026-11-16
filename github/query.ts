@@ -1,4 +1,4 @@
-import type { ItemKind, SavedView } from "./model.ts";
+import type { ItemKind, RepoMeta, SavedView } from "./model.ts";
 
 /** A GitHub search query split into its words, quoted values kept whole. */
 export function words(query: string): string[] {
@@ -66,6 +66,20 @@ export const BUILT_IN_VIEWS: Record<ItemKind, SavedView[]> = {
     { name: "No assignee", query: "is:open no:assignee" },
   ],
 };
+
+/** Open PRs that ask one of the viewer's teams to review and not the viewer, which isn't theirs: what advanced search leaves out of review-requested:@me. */
+export function teamReviewQuery(teams: string[]) {
+  const asked = [...teams].sort().map((team) => `team-review-requested:${team}`);
+  const anyTeam = asked.length > 1 ? `(${asked.join(" OR ")})` : asked[0];
+  return `is:open ${anyTeam} -user-review-requested:@me -author:@me`;
+}
+
+/** The built-in views, with Team reviews after Needs my review where the server's search splits the two and the viewer is in a team. */
+export function builtInViews(kind: ItemKind, meta: Pick<RepoMeta, "teams" | "advancedSearch"> | null): SavedView[] {
+  if (kind !== "pr" || !meta?.advancedSearch || meta.teams.length === 0) return BUILT_IN_VIEWS[kind];
+  const teamReviews = { name: "Team reviews", query: teamReviewQuery(meta.teams) };
+  return BUILT_IN_VIEWS.pr.flatMap((view) => (view.name === "Needs my review" ? [view, teamReviews] : [view]));
+}
 
 export const DEFAULT_QUERY: Record<ItemKind, string> = { pr: "is:open", issue: "is:open" };
 

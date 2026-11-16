@@ -41,6 +41,7 @@ export interface ListItem {
   baseRef?: string;
   checks?: ChecksSummary;
   review?: ReviewDecision;
+  /** Users by login, teams as org/slug. */
   reviewRequested?: string[];
   additions?: number;
   deletions?: number;
@@ -126,6 +127,10 @@ export interface RepoMeta {
   deleteBranchOnMerge: boolean;
   defaultBranch: string | null;
   canPush: boolean;
+  /** The viewer's teams in the repository's organization, as org/slug. */
+  teams: string[];
+  /** Whether the server has GitHub's advanced issue search, which gh's lists use, and whose review-requested:@me leaves out the viewer's teams. */
+  advancedSearch: boolean;
 }
 
 export type MergeMethod = "squash" | "merge" | "rebase";

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { WorkspaceTabContext } from "../mirador/api.ts";
 import { detailKey, listKey, type CheckoutReply, type TabState } from "../github/model.ts";
 import { PROMPTS } from "../github/prompts.ts";
+import { teamReviewQuery } from "../github/query.ts";
 import { GitHubTab } from "../github/tab.ts";
 import type { Runner } from "../github/run.ts";
 import { FakeGitHub } from "./fake-gh.ts";
@@ -41,7 +42,7 @@ function setUp(git: Partial<Git> = {}) {
   const tab = new GitHubTab(run);
   const state = () => tab.state(context) as Promise<TabState>;
   const act = (action: unknown) => tab.action(action, context);
-  return { github, repoGit, calls, context, tab, state, act, changes: () => changes };
+  return { github, repoGit, calls, run, context, tab, state, act, changes: () => changes };
 }
 
 describe("connecting a workspace", () => {
@@ -57,8 +58,19 @@ describe("connecting a workspace", () => {
     expect(await act({ kind: "connect", repo: "acme/widgets" })).toEqual({ connected: { host: "github.com", owner: "acme", name: "widgets" } });
     const connected = await state();
     expect(connected.connection).toEqual({ host: "github.com", owner: "acme", name: "widgets" });
-    expect(connected.meta).toMatchObject({ viewer: "sodre90", mergeMethods: ["squash", "merge"], assignable: ["lena-ortiz", "tom-baker", "sodre90"], canPush: true });
+    expect(connected.meta).toMatchObject({ viewer: "sodre90", mergeMethods: ["squash", "merge"], assignable: ["lena-ortiz", "tom-baker", "sodre90"], canPush: true, teams: ["acme/widgets-core"], advancedSearch: true });
     expect(connected.meta?.labels.map(({ name }) => name)).toEqual(["bug", "enhancement", "good first issue"]);
+  });
+
+  test("connects though gh can't list the viewer's teams, as a token without read:org can't", async () => {
+    const { state, act, github } = setUp();
+    const answer = github.answer.bind(github);
+    github.answer = (args) => (args[1] === "user/teams" ? { code: 1, stdout: "", stderr: "gh: Resource not accessible by integration (HTTP 403)" } : answer(args));
+    await act({ kind: "connect", repo: "acme/widgets" });
+    await act({ kind: "refresh", list: null, counts: "pr" });
+    const connected = await state();
+    expect(connected.meta).toMatchObject({ teams: [], advancedSearch: true });
+    expect(connected.counts).toMatchObject({ [listKey("pr", "is:open review-requested:@me")]: 1, [listKey("pr", "is:open")]: 3 });
   });
 
   test("refuses a repository gh can't see, and words it can't read", async () => {
@@ -89,6 +101,37 @@ describe("refreshing", () => {
     expect(refreshed.counts).toMatchObject({ [listKey("pr", "is:open")]: 3, [listKey("pr", "is:open author:@me")]: 1, [listKey("pr", "is:open status:failure")]: 1 });
     expect(refreshed).toMatchObject({ branch: "drag-queue", branchPr: { number: 412 } });
     expect(refreshed.loading).toEqual([]);
+  });
+
+  test("a view's count is its list's length: Needs my review counts the viewer's requests, Team reviews their teams'", async () => {
+    const { state, act, calls } = setUp();
+    await act({ kind: "connect", repo: "acme/widgets" });
+    const teamReviews = teamReviewQuery(["acme/widgets-core"]);
+    await act({ kind: "refresh", list: { kind: "pr", query: teamReviews }, counts: "pr" });
+    const refreshed = await state();
+    expect(refreshed.lists[listKey("pr", teamReviews)]?.items.map(({ number }) => number)).toEqual([412]);
+    expect(refreshed.counts).toMatchObject({ [listKey("pr", "is:open review-requested:@me")]: 1, [listKey("pr", teamReviews)]: 1 });
+    expect(calls.find((call) => call.startsWith("gh api graphql -f query=query { q0:"))).toContain("search(type: ISSUE_ADVANCED,");
+  });
+
+  test("after a restart, counts wait for what the repository's server tells of its search and the viewer's teams", async () => {
+    const { state, act, run, context } = setUp();
+    await act({ kind: "connect", repo: "acme/widgets" });
+    const restarted = new GitHubTab(run);
+    await restarted.action({ kind: "refresh", list: null, counts: "pr" }, context);
+    expect(((await restarted.state(context)) as TabState).counts).toHaveProperty([listKey("pr", teamReviewQuery(["acme/widgets-core"]))], 1);
+  });
+
+  test("on a server without advanced search, counts use the search gh's lists fall back to, and there is no Team reviews", async () => {
+    const { state, act, github, calls } = setUp();
+    github.advancedSearch = false;
+    await act({ kind: "connect", repo: "acme/widgets" });
+    await act({ kind: "refresh", list: null, counts: "pr" });
+    const refreshed = await state();
+    expect(refreshed.meta?.advancedSearch).toBe(false);
+    expect(refreshed.counts).toMatchObject({ [listKey("pr", "is:open review-requested:@me")]: 1, [listKey("pr", "is:open")]: 3 });
+    expect(refreshed.counts).not.toHaveProperty([listKey("pr", teamReviewQuery(["acme/widgets-core"]))]);
+    expect(calls.find((call) => call.startsWith("gh api graphql -f query=query { q0:"))).toContain("search(type: ISSUE,");
   });
 
   test("asking for the same list while it loads waits for the one fetch", async () => {

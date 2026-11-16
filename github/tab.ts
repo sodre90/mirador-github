@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { WorkspaceTab, WorkspaceTabContext } from "../mirador/api.ts";
-import { branchPrArgs, checkoutArgs, countsArgs, labelsArgs, listArgs, problemOf, repoMetaArgs, viewArgs, viewerArgs, writeArgs } from "./gh.ts";
+import { branchPrArgs, checkoutArgs, countsArgs, labelsArgs, listArgs, problemOf, repoMetaArgs, searchTypesArgs, teamsArgs, viewArgs, viewerArgs, writeArgs } from "./gh.ts";
 import {
   detailKey,
   listKey,
@@ -19,7 +19,7 @@ import {
   type TabState,
 } from "./model.ts";
 import { issueDetail, issueItem, prDetail, prItem } from "./normalize.ts";
-import { BUILT_IN_VIEWS, DEFAULT_QUERY } from "./query.ts";
+import { builtInViews, DEFAULT_QUERY } from "./query.ts";
 import { promptLevelOf, PROMPTS, withPrompt, type PromptOverrides } from "./prompts.ts";
 import { parseRepo, remoteCandidates, type RemoteCandidate, type RepoRef } from "./remote.ts";
 import { ProgramMissing, spawnRunner, type Ran, type Runner } from "./run.ts";
@@ -91,6 +91,14 @@ const mergeMethodsOf = (repo: Record<string, unknown>): MergeMethod[] =>
       ["rebase", repo.rebaseMergeAllowed],
     ] as const
   ).flatMap(([method, allowed]) => (allowed === false ? [] : [method]));
+
+const linesOf = (output: string) =>
+  output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+const teamsIn = (owner: string, teams: string[]) => teams.filter((team) => team.toLowerCase().startsWith(`${owner.toLowerCase()}/`));
 
 /** The GitHub tab of every workspace: what Mirador asks of it, and the user's actions in it. */
 export class GitHubTab implements WorkspaceTab<TabState> {
@@ -264,10 +272,12 @@ export class GitHubTab implements WorkspaceTab<TabState> {
   }
 
   private async fetchMeta(context: WorkspaceTabContext, repo: RepoRef): Promise<RepoMeta> {
-    const [about, labels, viewer] = await Promise.all([
+    const [about, labels, viewer, teams, advancedSearch] = await Promise.all([
       this.ghJson<Record<string, unknown>>(context, repo, repoMetaArgs(repo)),
       this.ghJson<{ name: string; color: string }[]>(context, repo, labelsArgs(repo)).catch(() => []),
       this.gh(context, repo, viewerArgs(repo)).then((login) => login.trim() || null, () => null),
+      this.gh(context, repo, teamsArgs(repo)).then((teams) => teamsIn(repo.owner, linesOf(teams)), () => []),
+      this.gh(context, repo, searchTypesArgs(repo)).then((types) => linesOf(types).includes("ISSUE_ADVANCED"), () => true),
     ]);
     const permission = String(about.viewerPermission ?? "");
     return {
@@ -278,18 +288,26 @@ export class GitHubTab implements WorkspaceTab<TabState> {
       deleteBranchOnMerge: about.deleteBranchOnMerge === true,
       defaultBranch: String((about.defaultBranchRef as { name?: unknown } | null)?.name ?? "") || null,
       canPush: ["ADMIN", "MAINTAIN", "WRITE"].includes(permission),
+      teams,
+      advancedSearch,
     };
+  }
+
+  /** What gh last told of the repository, fetched once; null while gh can't tell, to be asked again at the next refresh. */
+  private metaOf(context: WorkspaceTabContext, repo: RepoRef): Promise<RepoMeta | null> {
+    const cache = this.cacheOf(context);
+    if (cache.meta) return Promise.resolve(cache.meta);
+    return this.once(context, "meta", async () => (cache.meta = await this.fetchMeta(context, repo))).catch(() => null);
   }
 
   /** Whatever of a list, the views' counts, the branch and the repository's labels and people the tab needs now. */
   private async refresh(context: WorkspaceTabContext, list: { kind: ItemKind; query: string } | null, counts: ItemKind | null) {
     const repo = this.connected(context);
-    const cache = this.cacheOf(context);
     await Promise.allSettled([
       list && this.fetchList(context, repo, list.kind, list.query),
       counts && this.fetchCounts(context, repo, counts),
       this.fetchBranch(context, repo),
-      !cache.meta && this.once(context, "meta", async () => (cache.meta = await this.fetchMeta(context, repo))),
+      this.metaOf(context, repo),
     ]);
   }
 
@@ -308,11 +326,13 @@ export class GitHubTab implements WorkspaceTab<TabState> {
     });
   }
 
+  /** After the repository's meta, which tells the views there are and the search their lists use. */
   private fetchCounts(context: WorkspaceTabContext, repo: RepoRef, kind: ItemKind) {
-    const queries = [...BUILT_IN_VIEWS[kind], ...savedViewsOf(context.storage.get("savedViews"))[kind]].map(({ query }) => query);
     const cache = this.cacheOf(context);
     return this.once(context, `counts:${kind}`, async () => {
-      const answer = await this.ghJson<{ data?: Record<string, { issueCount?: number }> }>(context, repo, countsArgs(repo, kind, queries)).catch(() => null);
+      const meta = await this.metaOf(context, repo);
+      const queries = [...builtInViews(kind, meta), ...savedViewsOf(context.storage.get("savedViews"))[kind]].map(({ query }) => query);
+      const answer = await this.ghJson<{ data?: Record<string, { issueCount?: number }> }>(context, repo, countsArgs(repo, kind, queries, meta?.advancedSearch ?? true)).catch(() => null);
       if (!answer?.data) return;
       queries.forEach((query, index) => {
         const found = answer.data![`q${index}`]?.issueCount;
@@ -355,7 +375,7 @@ export class GitHubTab implements WorkspaceTab<TabState> {
   private saveView(context: WorkspaceTabContext, kind: ItemKind, name: string, query: string) {
     const trimmed = name.trim();
     if (!trimmed) throw new Error("Give the view a name.");
-    if (BUILT_IN_VIEWS[kind].some((view) => view.name.toLowerCase() === trimmed.toLowerCase())) throw new Error(`"${trimmed}" is one of the built-in views; pick another name.`);
+    if (builtInViews(kind, this.cacheOf(context).meta).some((view) => view.name.toLowerCase() === trimmed.toLowerCase())) throw new Error(`"${trimmed}" is one of the built-in views; pick another name.`);
     const views = savedViewsOf(context.storage.get("savedViews"));
     const others = views[kind].filter((view) => view.name.toLowerCase() !== trimmed.toLowerCase());
     context.storage.set("savedViews", { ...views, [kind]: [...others, { name: trimmed, query: query.trim() }] });

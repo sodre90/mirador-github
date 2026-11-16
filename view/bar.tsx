@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { updatedText } from "../github/format.ts";
 import { listKey, type ItemKind } from "../github/model.ts";
-import { BUILT_IN_VIEWS, CHECK_STATUSES, DEFAULT_QUERY, isValue, sameQuery, SORTS, STATE_VALUES, valuesOf, withIs, withValues } from "../github/query.ts";
+import { builtInViews, CHECK_STATUSES, DEFAULT_QUERY, isValue, sameQuery, SORTS, STATE_VALUES, valuesOf, withIs, withValues } from "../github/query.ts";
 import { repoLabel, repoUrl } from "../github/remote.ts";
 import { send, useTab } from "./bridge.ts";
 import { Label, Spinner } from "./icons.tsx";
@@ -85,7 +85,7 @@ export function ViewsBar() {
   const tab = useTab();
   const { state, kind, query } = tab;
   const saved = state.savedViews[kind];
-  const views = [...BUILT_IN_VIEWS[kind].map((view) => ({ ...view, saved: false })), ...saved.map((view) => ({ ...view, saved: true }))];
+  const views = [...builtInViews(kind, state.meta).map((view) => ({ ...view, saved: false })), ...saved.map((view) => ({ ...view, saved: true }))];
   const current = views.find((view) => sameQuery(view.query, query));
   return (
     <nav className="views" aria-label="Views">

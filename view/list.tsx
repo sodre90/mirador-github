@@ -13,19 +13,22 @@ function ChecksBadge({ item }: { item: ListItem }) {
   return <span className="checks passed" data-hint={`All ${checks.total} checks passed`}><CheckMark state="passed" /> {checks.passed}/{checks.total}</span>;
 }
 
-/** Why the row is the user's business: asks their review, is assigned to them, or is theirs. */
-function forYou(item: ListItem, viewer: string | null) {
+const teamName = (team: string) => team.slice(team.indexOf("/") + 1);
+
+/** Why the row is the user's business: asks their review, is assigned to them, or asks a team of theirs. */
+function forYou(item: ListItem, viewer: string | null, teams: string[]) {
   if (!viewer) return null;
   if (item.reviewRequested?.includes(viewer)) return "asks your review";
   if (item.assignees.includes(viewer)) return "assigned to you";
-  return null;
+  const askedTeams = (item.reviewRequested ?? []).filter((asked) => teams.some((team) => team.toLowerCase() === asked.toLowerCase()));
+  return askedTeams.length > 0 ? `asks ${askedTeams.map(teamName).join(", ")} to review` : null;
 }
 
 export function Row({ item, pinned = false }: { item: ListItem; pinned?: boolean }) {
   const tab = useTab();
   const selected = tab.selected?.kind === item.kind && tab.selected.number === item.number;
   const viewer = tab.state.meta?.viewer ?? null;
-  const yours = forYou(item, viewer);
+  const yours = forYou(item, viewer, tab.state.meta?.teams ?? []);
   return (
     <li>
       <button

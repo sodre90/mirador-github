@@ -35,12 +35,19 @@ export const branchPrArgs = (repo: RepoRef, branch: string) => ["pr", "view", br
 
 const hostArgs = (repo: RepoRef) => (repo.host === GITHUB_COM ? [] : ["--hostname", repo.host]);
 
-/** One GraphQL search per query, by alias, so every view's count comes in one call. */
-export function countsArgs(repo: RepoRef, kind: ItemKind, queries: string[]) {
+/** One GraphQL search per query, by alias, so every view's count comes in one call, in the search gh's lists use, so a count matches its list. */
+export function countsArgs(repo: RepoRef, kind: ItemKind, queries: string[], advancedSearch: boolean) {
   const type = kind === "pr" ? "is:pr" : "is:issue";
-  const fields = queries.map((query, index) => `q${index}: search(type: ISSUE, query: ${JSON.stringify(`repo:${repo.owner}/${repo.name} ${type} ${query}`.trim())}) { issueCount }`);
+  const searchType = advancedSearch ? "ISSUE_ADVANCED" : "ISSUE";
+  const fields = queries.map((query, index) => `q${index}: search(type: ${searchType}, query: ${JSON.stringify(`repo:${repo.owner}/${repo.name} ${type} ${query}`.trim())}) { issueCount }`);
   return ["api", "graphql", ...hostArgs(repo), "-f", `query=query { ${fields.join(" ")} }`];
 }
+
+/** The server's search types, one per line: gh lists with ISSUE_ADVANCED where the server has it, as GitHub Enterprise before it doesn't. */
+export const searchTypesArgs = (repo: RepoRef) => ["api", "graphql", ...hostArgs(repo), "-f", 'query=query { __type(name: "SearchType") { enumValues(includeDeprecated: true) { name } } }', "--jq", ".data.__type.enumValues[].name"];
+
+/** Every team the viewer is in, of every organization, one org/slug per line. */
+export const teamsArgs = (repo: RepoRef) => ["api", "user/teams", ...hostArgs(repo), "--paginate", "--jq", '.[] | "\\(.organization.login)/\\(.slug)"'];
 
 export const viewerArgs = (repo: RepoRef) => ["api", "user", ...hostArgs(repo), "--jq", ".login"];
 

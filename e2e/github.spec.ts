@@ -82,6 +82,15 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await tab(page).getByRole("button", { name: /^All open/ }).click();
   });
 
+  await test.step("Needs my review counts the requests made to the user, and Team reviews those made to their teams", async () => {
+    await expect(tab(page).getByRole("button", { name: /^Needs my review/ }).locator("b")).toHaveText("1");
+    await expect(tab(page).getByRole("button", { name: /^Team reviews/ }).locator("b")).toHaveText("1");
+    await tab(page).getByRole("button", { name: /^Team reviews/ }).click();
+    await expect(tab(page).locator(".row")).toHaveCount(1);
+    await expect(row(page, 412)).toContainText("asks widgets-core to review");
+    await tab(page).getByRole("button", { name: /^All open/ }).click();
+  });
+
   await test.step("a menu at the frame's right edge opens toward the left, so all of it shows", async () => {
     await tab(page).locator(".filters").evaluate((filters) => ((filters as HTMLElement).style.justifyContent = "flex-end"));
     await tab(page).getByRole("button", { name: "Sort ▾" }).click();

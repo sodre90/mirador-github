@@ -3,7 +3,7 @@ import { ago, agoText, labelInk, updatedText } from "../github/format.ts";
 import { fixCheckText, mentionText, workText } from "../github/handoff.ts";
 import { countsArgs, listArgs, problemOf, shellText, writeArgs } from "../github/gh.ts";
 import { checkStateOf, issueDetail, issueItem, prDetail, prItem } from "../github/normalize.ts";
-import { freeText, isValue, sameQuery, valuesOf, withIs, withValues } from "../github/query.ts";
+import { BUILT_IN_VIEWS, builtInViews, freeText, isValue, sameQuery, teamReviewQuery, valuesOf, withIs, withValues } from "../github/query.ts";
 import { parseRepo, remoteCandidates, repoArg } from "../github/remote.ts";
 import { ProgramMissing } from "../github/run.ts";
 import { ISSUES, PRS } from "./fixtures/github.ts";
@@ -37,6 +37,7 @@ describe("gh's answers", () => {
     const [approved, changesAsked, draft] = PRS.map((pr) => prItem(pr));
     expect(approved).toMatchObject({ number: 412, state: "open", checks: { passed: 2, failed: 0, pending: 0, total: 2 }, review: "approved", comments: 1, headRef: "drag-queue" });
     expect(changesAsked).toMatchObject({ checks: { failed: 1, total: 2 }, review: "changes-requested", reviewRequested: ["sodre90"], labels: [{ name: "bug", color: "d73a4a" }] });
+    expect(approved?.reviewRequested).toEqual(["acme/widgets-core"]);
     expect(draft).toMatchObject({ state: "draft", checks: { pending: 1 } });
   });
 
@@ -83,11 +84,12 @@ describe("gh commands", () => {
     expect(listArgs(repo, "issue", "")).not.toContain("--search");
   });
 
-  test("every view's count comes from one GraphQL call, on the repository's server", () => {
-    const args = countsArgs({ host: "github.example.com", owner: "team", name: "app" }, "pr", ["is:open", 'label:"good first"']);
+  test("every view's count comes from one GraphQL call, on the repository's server, in the search gh's lists use", () => {
+    const args = countsArgs({ host: "github.example.com", owner: "team", name: "app" }, "pr", ["is:open", 'label:"good first"'], true);
     expect(args.slice(0, 4)).toEqual(["api", "graphql", "--hostname", "github.example.com"]);
-    expect(args[5]).toContain('q0: search(type: ISSUE, query: "repo:team/app is:pr is:open")');
-    expect(args[5]).toContain('q1: search(type: ISSUE, query: "repo:team/app is:pr label:\\"good first\\"")');
+    expect(args[5]).toContain('q0: search(type: ISSUE_ADVANCED, query: "repo:team/app is:pr is:open")');
+    expect(args[5]).toContain('q1: search(type: ISSUE_ADVANCED, query: "repo:team/app is:pr label:\\"good first\\"")');
+    expect(countsArgs(repo, "issue", ["is:open"], false)[3]).toContain('q0: search(type: ISSUE, query: "repo:acme/widgets is:issue is:open")');
   });
 
   test("writes run the commands the user confirms", () => {
@@ -113,6 +115,19 @@ describe("a query", () => {
     expect(withIs("is:open is:draft", ["open", "closed", "merged"], "merged")).toBe("is:draft is:merged");
     expect(isValue("is:draft is:CLOSED", ["open", "closed"])).toBe("closed");
     expect(withIs("is:open crash", ["open", "closed"], null)).toBe("crash");
+  });
+
+  test("Team reviews asks for a team of the viewer's and not them, on their own PRs neither, its teams in one order", () => {
+    expect(teamReviewQuery(["acme/core"])).toBe("is:open team-review-requested:acme/core -user-review-requested:@me -author:@me");
+    expect(teamReviewQuery(["acme/web", "acme/core"])).toBe("is:open (team-review-requested:acme/core OR team-review-requested:acme/web) -user-review-requested:@me -author:@me");
+  });
+
+  test("Team reviews follows Needs my review where advanced search leaves teams out of it, and the viewer has a team", () => {
+    expect(builtInViews("pr", { teams: ["acme/core"], advancedSearch: true }).map(({ name }) => name)).toEqual(["Needs my review", "Team reviews", "Mine", "Assigned to me", "All open", "Failing checks"]);
+    expect(builtInViews("pr", { teams: ["acme/core"], advancedSearch: false })).toEqual(BUILT_IN_VIEWS.pr);
+    expect(builtInViews("pr", { teams: [], advancedSearch: true })).toEqual(BUILT_IN_VIEWS.pr);
+    expect(builtInViews("pr", null)).toEqual(BUILT_IN_VIEWS.pr);
+    expect(builtInViews("issue", { teams: ["acme/core"], advancedSearch: true })).toEqual(BUILT_IN_VIEWS.issue);
   });
 
   test("free text is what isn't a qualifier, and order doesn't make queries differ", () => {
