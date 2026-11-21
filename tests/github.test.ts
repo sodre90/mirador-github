@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ago, agoText, labelInk, updatedText } from "../github/format.ts";
+import { ago, agoText, labelInk, runningFor, updatedText } from "../github/format.ts";
 import { fixCheckText, mentionText, workText } from "../github/handoff.ts";
 import { countsArgs, listArgs, problemOf, shellText, writeArgs } from "../github/gh.ts";
 import { checkStateOf, checksOf, issueDetail, issueItem, prDetail, prItem } from "../github/normalize.ts";
@@ -111,7 +111,21 @@ describe("a check's finish time", () => {
       { name: "lint", status: "COMPLETED", conclusion: "SUCCESS", completedAt: "2026-11-20T10:00:00Z" },
     ]);
     expect(running.completedAt).toBeNull();
+    expect(running.startedAt).toBeNull();
     expect(done.completedAt).toBe("2026-11-20T10:00:00Z");
+  });
+});
+
+describe("a running check's time", () => {
+  const now = Date.parse("2026-11-20T10:30:00Z");
+  test("says how long it has run", () => {
+    expect(runningFor("2026-11-20T10:26:00Z", now)).toBe("Running 4m");
+    expect(runningFor("2026-11-20T08:00:00Z", now)).toBe("Running 3h");
+  });
+  test("says nothing while it is only queued", () => {
+    expect(runningFor(null, now)).toBe("");
+    const [queued] = checksOf([{ name: "build", status: "QUEUED", conclusion: "", startedAt: "0001-01-01T00:00:00Z" }]);
+    expect(queued.startedAt).toBeNull();
   });
 });
 

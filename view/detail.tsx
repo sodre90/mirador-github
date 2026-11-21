@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ago, agoText } from "../github/format.ts";
+import { ago, agoText, runningFor } from "../github/format.ts";
 import { fixCheckText, mentionText, reviewText, workText } from "../github/handoff.ts";
 import { detailKey, type Check, type Detail as DetailData, type ListItem, type TimelineEntry } from "../github/model.ts";
 import { failureText, useTab } from "./bridge.ts";
@@ -229,7 +229,7 @@ function Checks({ item, checks }: { item: ListItem; checks: Check[] }) {
               {check.workflow && <small className="muted"> · {check.workflow}</small>}
             </span>
             <span className="check-side muted">
-              {check.completedAt && ago(check.completedAt)}
+              {check.state === "pending" ? runningFor(check.startedAt) : check.completedAt && ago(check.completedAt)}
               {check.url && (
                 <button type="button" className="link" onClick={() => window.mirador.openLink(check.url!)}>
                   Details ↗

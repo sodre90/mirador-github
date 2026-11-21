@@ -43,3 +43,11 @@ export function agoText(iso: string | number | null, now = Date.now()): string {
   if (short === "now") return "just now";
   return /\d$/.test(short) || /[a-z]{3}/i.test(short) ? `on ${short}` : short ? `${short} ago` : "";
 }
+
+/** How long a running check has run: "Running 4m", "Running 2h". */
+export function runningFor(startedAt: string | null, now = Date.now()): string {
+  const then = startedAt ? Date.parse(startedAt) : NaN;
+  if (!Number.isFinite(then)) return "";
+  const minutes = Math.max(0, Math.round((now - then) / 60_000));
+  return minutes < 60 ? `Running ${Math.max(1, minutes)}m` : `Running ${Math.round(minutes / 60)}h`;
+}

@@ -68,8 +68,8 @@ export function checkStateOf(check: Json): Check["state"] {
   return "failed";
 }
 
-/** GitHub gives a check that hasn't finished the zero date, "0001-01-01T00:00:00Z", rather than nothing. */
-const finishedAt = (value: unknown): string | null => {
+/** GitHub gives a check that hasn't started or finished the zero date, "0001-01-01T00:00:00Z", rather than nothing. */
+const realTime = (value: unknown): string | null => {
   const iso = text(value);
   return iso && !iso.startsWith("0001-") ? iso : null;
 };
@@ -82,7 +82,8 @@ export const checksOf = (rollup: unknown): Check[] =>
       state: checkStateOf(check),
       url: text(check.detailsUrl) || text(check.targetUrl) || null,
       workflow: text(check.workflowName) || null,
-      completedAt: finishedAt(check.completedAt),
+      startedAt: realTime(check.startedAt),
+      completedAt: realTime(check.completedAt),
     };
   });
 

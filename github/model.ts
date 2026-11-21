@@ -57,6 +57,8 @@ export interface Check {
   state: "passed" | "failed" | "pending" | "skipped";
   url: string | null;
   workflow: string | null;
+  /** When it began, so a running check can say how long it has run; null while it is only queued. */
+  startedAt: string | null;
   completedAt: string | null;
 }
 
