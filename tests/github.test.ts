@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { ago, agoText, labelInk, updatedText } from "../github/format.ts";
+import { ago, agoText, checkTime, durationText, labelInk, updatedText } from "../github/format.ts";
 import { fixCheckText, mentionText, workText } from "../github/handoff.ts";
 import { countsArgs, listArgs, problemOf, shellText, writeArgs } from "../github/gh.ts";
-import { checkStateOf, issueDetail, issueItem, prDetail, prItem } from "../github/normalize.ts";
+import { checkStateOf, checksOf, issueDetail, issueItem, prDetail, prItem } from "../github/normalize.ts";
 import { BUILT_IN_VIEWS, builtInViews, freeText, isValue, sameQuery, teamReviewQuery, valuesOf, withIs, withValues } from "../github/query.ts";
 import { parseRepo, remoteCandidates, repoArg } from "../github/remote.ts";
 import { ProgramMissing } from "../github/run.ts";
@@ -57,6 +57,13 @@ describe("gh's answers", () => {
       ["comment", "sodre90", undefined],
     ]);
     expect(detail).toMatchObject({ commits: 3, mergeable: "mergeable", closesIssues: [60], files: [{ path: "web/Queue.tsx", additions: 100, deletions: 30 }, expect.anything()] });
+  });
+
+  test("a check keeps when it started and finished, and a running one has no finish rather than GitHub's zero time", () => {
+    const [finished] = prDetail(PRS[0]!).checkList!;
+    const [running] = prDetail(PRS[2]!).checkList!;
+    expect(finished).toMatchObject({ state: "passed", startedAt: "2026-11-03T10:48:00.000Z", completedAt: "2026-11-03T11:00:00.000Z" });
+    expect(running).toMatchObject({ state: "pending", startedAt: "2026-11-03T10:48:00.000Z", completedAt: null });
   });
 
   test("an issue has its sub-issues, the PRs that close it, and why it closed", () => {
@@ -143,6 +150,25 @@ describe("the view's words", () => {
     expect(agoText("2026-11-03T09:00:00Z", now)).toBe("3h ago");
     expect(agoText("2026-08-01T09:00:00Z", now)).toStartWith("on ");
     expect(agoText(null, now)).toBe("");
+  });
+
+  test("a check says how long it ran, or has run so far, as GitHub does", () => {
+    const now = Date.parse("2026-11-03T12:00:00Z");
+    expect([48_000, 59_700, 12 * 60_000, 60 * 60_000, 64 * 60_000, 51 * 3_600_000].map((milliseconds) => durationText(milliseconds))).toEqual(["48s", "1m", "12m", "1h", "1h 4m", "2d 3h"]);
+    expect(checkTime({ state: "passed", startedAt: "2026-11-03T10:48:00Z", completedAt: "2026-11-03T11:00:00Z" }, now)).toEqual({ text: "took 12m", hint: "Finished 1h ago" });
+    expect(checkTime({ state: "pending", startedAt: "2026-11-03T11:48:00Z", completedAt: null }, now)).toEqual({ text: "12m so far", hint: "Started 12m ago" });
+    expect(checkTime({ state: "pending", startedAt: null, completedAt: null }, now)).toBeNull();
+  });
+
+  test("a commit status, which has no finish time, says how long it has run only while it's pending", () => {
+    const now = Date.parse("2026-11-03T12:00:00Z");
+    const [passedStatus, pendingStatus] = checksOf([
+      { __typename: "StatusContext", context: "node-test-commit", state: "SUCCESS", startedAt: "2026-11-01T08:00:00Z" },
+      { __typename: "StatusContext", context: "tide", state: "PENDING", startedAt: "2026-11-03T11:55:00Z" },
+    ]);
+    expect(passedStatus).toMatchObject({ state: "passed", startedAt: "2026-11-01T08:00:00Z", completedAt: null });
+    expect(checkTime(passedStatus!, now)).toBeNull();
+    expect(checkTime(pendingStatus!, now)).toEqual({ text: "5m so far", hint: "Started 5m ago" });
   });
 
   const repo = { host: "github.com", owner: "acme", name: "widgets" };

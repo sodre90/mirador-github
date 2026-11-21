@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ago, agoText } from "../github/format.ts";
+import { ago, agoText, checkTime } from "../github/format.ts";
 import { fixCheckText, mentionText, reviewText, workText } from "../github/handoff.ts";
 import { detailKey, type Check, type Detail as DetailData, type ListItem, type TimelineEntry } from "../github/model.ts";
 import { failureText, useTab } from "./bridge.ts";
@@ -212,6 +212,11 @@ function Conversation({ detail }: { detail: DetailData }) {
   );
 }
 
+function CheckTime({ check }: { check: Check }) {
+  const time = checkTime(check);
+  return time && <span className="check-time" data-hint={time.hint}>{time.text}</span>;
+}
+
 function Checks({ item, checks }: { item: ListItem; checks: Check[] }) {
   const tab = useTab();
   const handOff = useHandOff();
@@ -229,7 +234,7 @@ function Checks({ item, checks }: { item: ListItem; checks: Check[] }) {
               {check.workflow && <small className="muted"> · {check.workflow}</small>}
             </span>
             <span className="check-side muted">
-              {check.completedAt && ago(check.completedAt)}
+              <CheckTime check={check} />
               {check.url && (
                 <button type="button" className="link" onClick={() => window.mirador.openLink(check.url!)}>
                   Details ↗

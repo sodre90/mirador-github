@@ -57,6 +57,8 @@ export interface Check {
   state: "passed" | "failed" | "pending" | "skipped";
   url: string | null;
   workflow: string | null;
+  startedAt: string | null;
+  /** null while it runs. */
   completedAt: string | null;
 }
 

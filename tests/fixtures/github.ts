@@ -2,9 +2,9 @@
 
 const at = (hoursAgo: number) => new Date(Date.parse("2026-11-03T12:00:00Z") - hoursAgo * 3_600_000).toISOString();
 
-const passed = (name: string) => ({ __typename: "CheckRun", name, status: "COMPLETED", conclusion: "SUCCESS", detailsUrl: `https://github.com/acme/widgets/actions/runs/1/job/${name}`, workflowName: "CI", completedAt: at(1) });
+const passed = (name: string) => ({ __typename: "CheckRun", name, status: "COMPLETED", conclusion: "SUCCESS", detailsUrl: `https://github.com/acme/widgets/actions/runs/1/job/${name}`, workflowName: "CI", startedAt: at(1.2), completedAt: at(1) });
 const failed = (name: string) => ({ ...passed(name), conclusion: "FAILURE" });
-const running = (name: string) => ({ ...passed(name), status: "IN_PROGRESS", conclusion: "", completedAt: null });
+const running = (name: string) => ({ ...passed(name), status: "IN_PROGRESS", conclusion: "", completedAt: "0001-01-01T00:00:00Z" });
 
 export const PRS = [
   {

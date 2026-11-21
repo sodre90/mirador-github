@@ -1,3 +1,5 @@
+import type { Check } from "./model.ts";
+
 /** How long ago, in the few words a list row has room for: "now", "5m", "3h", "2d", "4w", then the date. */
 export function ago(iso: string | number | null, now = Date.now()): string {
   if (iso === null || iso === "") return "";
@@ -11,6 +13,27 @@ export function ago(iso: string | number | null, now = Date.now()): string {
   const days = Math.round(hours / 24);
   if (days < 28) return days < 7 ? `${days}d` : `${Math.round(days / 7)}w`;
   return new Date(then).toLocaleDateString(undefined, { day: "numeric", month: "short", year: new Date(then).getFullYear() === new Date(now).getFullYear() ? undefined : "numeric" });
+}
+
+const twoUnits = (big: number, bigUnit: string, small: number, smallUnit: string) => (small ? `${big}${bigUnit} ${small}${smallUnit}` : `${big}${bigUnit}`);
+
+/** How long something ran: "48s", "12m", "1h 4m", "2d 3h". */
+export function durationText(milliseconds: number): string {
+  const seconds = Math.max(0, Math.round(milliseconds / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return twoUnits(hours, "h", minutes % 60, "m");
+  return twoUnits(Math.floor(hours / 24), "d", hours % 24, "h");
+}
+
+/** A check's run time, "12m so far" or "took 48s" as GitHub shows it, with when it started or finished for its hint. */
+export function checkTime({ state, startedAt, completedAt }: Pick<Check, "state" | "startedAt" | "completedAt">, now = Date.now()) {
+  if (!startedAt) return null;
+  if (state === "pending") return { text: `${durationText(now - Date.parse(startedAt))} so far`, hint: `Started ${agoText(startedAt, now)}` };
+  if (!completedAt) return null;
+  return { text: `took ${durationText(Date.parse(completedAt) - Date.parse(startedAt))}`, hint: `Finished ${agoText(completedAt, now)}` };
 }
 
 /** "Updated 2 min ago", for the bar. */

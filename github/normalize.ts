@@ -34,6 +34,8 @@ type Json = Record<string, unknown>;
 const record = (value: unknown): Json => (value && typeof value === "object" && !Array.isArray(value) ? (value as Json) : {});
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
+/** A time gh gives, or null for none: a check that hasn't finished has GitHub's zero time, 0001-01-01. */
+const timeOf = (value: unknown) => (Date.parse(text(value)) > 0 ? text(value) : null);
 const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const login = (value: unknown) => text(record(value).login) || "ghost";
 
@@ -76,7 +78,8 @@ export const checksOf = (rollup: unknown): Check[] =>
       state: checkStateOf(check),
       url: text(check.detailsUrl) || text(check.targetUrl) || null,
       workflow: text(check.workflowName) || null,
-      completedAt: text(check.completedAt) || null,
+      startedAt: timeOf(check.startedAt),
+      completedAt: timeOf(check.completedAt),
     };
   });
 

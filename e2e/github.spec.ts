@@ -114,6 +114,9 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await expect(review.locator(".markdown")).not.toHaveCSS("color", await review.locator(".verdict").evaluate((verdict) => getComputedStyle(verdict).color));
     await detail.getByRole("tab", { name: /Checks/ }).click();
     await expect(detail.locator(".checks-list li.failed").first()).toBeVisible();
+    const typecheckTime = detail.locator(".checks-list li", { hasText: "typecheck" }).locator(".check-time");
+    await expect(typecheckTime).toHaveText("took 12m");
+    await expect(typecheckTime).toHaveAttribute("data-hint", /^Finished /);
     await shoot(page, "checks");
     await detail.getByRole("button", { name: "Ask the agent to fix" }).first().click();
     await expect.poll(agentSaw).toContain("#405");
@@ -179,6 +182,18 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
   await test.step("the new conversation's GitHub tab is the same, still connected", async () => {
     await gitHubToggle(page).click();
     await expect(row(page, 60)).toBeVisible();
+  });
+
+  await test.step("a running check says how long it has run so far, not GitHub's zero time", async () => {
+    await tab(page).getByRole("tab", { name: /Pull requests/ }).click();
+    await row(page, 409).click();
+    const detail = tab(page).locator(".detail");
+    await expect(detail.locator(".detail-title")).toContainText("Phone tab bar");
+    await detail.getByRole("tab", { name: /Checks/ }).click();
+    const runningTime = detail.locator(".checks-list li.pending .check-time");
+    await expect(runningTime).toHaveText(/^\d+[smhd]( \d+[smh])? so far$/);
+    await expect(runningTime).toHaveAttribute("data-hint", /^Started /);
+    await detail.getByRole("tab", { name: /Conversation/ }).click();
   });
 
   await test.step("a pull request is checked out in the workspace after the user confirms", async () => {
