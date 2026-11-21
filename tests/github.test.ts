@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ago, agoText, labelInk, updatedText } from "../github/format.ts";
 import { fixCheckText, mentionText, workText } from "../github/handoff.ts";
 import { countsArgs, listArgs, problemOf, shellText, writeArgs } from "../github/gh.ts";
-import { checkStateOf, issueDetail, issueItem, prDetail, prItem } from "../github/normalize.ts";
+import { checkStateOf, checksOf, issueDetail, issueItem, prDetail, prItem } from "../github/normalize.ts";
 import { BUILT_IN_VIEWS, builtInViews, freeText, isValue, sameQuery, teamReviewQuery, valuesOf, withIs, withValues } from "../github/query.ts";
 import { parseRepo, remoteCandidates, repoArg } from "../github/remote.ts";
 import { ProgramMissing } from "../github/run.ts";
@@ -101,6 +101,17 @@ describe("gh commands", () => {
     expect(writeArgs(repo, { kind: "comment", item: "pr", number: 405, body: "Superseded", close: true })).toEqual(["pr", "close", "405", "-R", "acme/widgets", "--comment", "Superseded"]);
     expect(writeArgs(repo, { kind: "ready", number: 409, ready: false })).toEqual(["pr", "ready", "409", "-R", "acme/widgets", "--undo"]);
     expect(shellText(["pr", "comment", "1", "--body", "It's done"])).toBe("gh pr comment 1 --body 'It'\\''s done'");
+  });
+});
+
+describe("a check's finish time", () => {
+  test("a running check has none, though GitHub sends the zero date", () => {
+    const [running, done] = checksOf([
+      { name: "build", status: "IN_PROGRESS", conclusion: "", completedAt: "0001-01-01T00:00:00Z" },
+      { name: "lint", status: "COMPLETED", conclusion: "SUCCESS", completedAt: "2026-11-20T10:00:00Z" },
+    ]);
+    expect(running.completedAt).toBeNull();
+    expect(done.completedAt).toBe("2026-11-20T10:00:00Z");
   });
 });
 

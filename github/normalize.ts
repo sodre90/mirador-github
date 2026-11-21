@@ -68,6 +68,12 @@ export function checkStateOf(check: Json): Check["state"] {
   return "failed";
 }
 
+/** GitHub gives a check that hasn't finished the zero date, "0001-01-01T00:00:00Z", rather than nothing. */
+const finishedAt = (value: unknown): string | null => {
+  const iso = text(value);
+  return iso && !iso.startsWith("0001-") ? iso : null;
+};
+
 export const checksOf = (rollup: unknown): Check[] =>
   list(rollup).map((entry) => {
     const check = record(entry);
@@ -76,7 +82,7 @@ export const checksOf = (rollup: unknown): Check[] =>
       state: checkStateOf(check),
       url: text(check.detailsUrl) || text(check.targetUrl) || null,
       workflow: text(check.workflowName) || null,
-      completedAt: text(check.completedAt) || null,
+      completedAt: finishedAt(check.completedAt),
     };
   });
 
