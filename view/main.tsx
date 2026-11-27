@@ -8,11 +8,11 @@ import { Connect, Problem } from "./connect.tsx";
 import { Detail } from "./detail.tsx";
 import { Spinner } from "./icons.tsx";
 import { List, shownRows } from "./list.tsx";
+import { afterBack, isNarrow, panesFor } from "./layout.ts";
 import { SheetView } from "./sheets.tsx";
 import viewStyles from "./view.css" with { type: "text" };
 
 const REFRESH_EVERY_MS = 2 * 60_000;
-const NARROW_PX = 640;
 const TOAST_MS = 3500;
 
 function useTabState() {
@@ -25,7 +25,7 @@ function useNarrow(root: React.RefObject<HTMLElement | null>) {
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     if (!root.current) return;
-    const observer = new ResizeObserver(([entry]) => setNarrow((entry?.contentRect.width ?? NARROW_PX) < NARROW_PX));
+    const observer = new ResizeObserver(([entry]) => setNarrow(entry ? isNarrow(entry.contentRect.width) : false));
     observer.observe(root.current);
     return () => observer.disconnect();
   }, [root.current]);
@@ -60,7 +60,7 @@ function useKeys(tab: Tab | null, rows: ListItem[]) {
       const at = rows.findIndex((row) => row.kind === tab.selected?.kind && row.number === tab.selected.number);
       const move = (by: number) => {
         const next = rows[Math.min(rows.length - 1, Math.max(0, at + by))];
-        if (next) tab.select(next);
+        if (next) tab.select(next, tab.detailOpen);
         requestAnimationFrame(() => document.querySelector(".row.selected")?.scrollIntoView({ block: "nearest" }));
       };
       const actions: Record<string, () => void> = {
@@ -70,7 +70,7 @@ function useKeys(tab: Tab | null, rows: ListItem[]) {
         ArrowUp: () => move(-1),
         "/": () => document.getElementById("github-search")?.focus(),
         r: tab.refresh,
-        Escape: () => tab.select(null),
+        Escape: () => tab.back(),
         ...(tab.selected && {
           o: () => window.mirador.openLink(tab.selected!.url),
           c: () => tab.showSheet({ kind: "comment", item: tab.selected! }),
@@ -103,9 +103,17 @@ function App() {
   const [kind, setKindHere] = useState<ItemKind | null>(null);
   const [queries, setQueries] = useState<Record<ItemKind, string> | null>(null);
   const [selected, setSelected] = useState<ListItem | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [toast, setToast] = useState<{ text: string; failed: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const wasOpen = useRef(detailOpen);
+
+  /** At narrow width, Back returns focus to the highlighted row, so a keyboard or screen-reader user lands where they were. */
+  useEffect(() => {
+    if (wasOpen.current && !detailOpen && narrow) document.querySelector<HTMLElement>(".row.selected")?.focus({ preventScroll: true });
+    wasOpen.current = detailOpen;
+  }, [detailOpen]);
 
   useEffect(() => {
     if (!state?.prefs || kind !== null) return;
@@ -136,6 +144,7 @@ function App() {
       setKind(next) {
         setKindHere(next);
         setSelected(null);
+        setDetailOpen(false);
         savePrefs({ kind: next, query: shownQueries });
       },
       search(next) {
@@ -144,9 +153,15 @@ function App() {
         savePrefs({ kind: shownKind, query: nextQueries });
       },
       selected,
-      select(item) {
+      detailOpen,
+      select(item, opens = true) {
         setSelected(item);
+        setDetailOpen(opens && item !== null);
         if (item) void send({ kind: "open", item: item.kind, number: item.number }).catch(() => {});
+      },
+      back() {
+        if (afterBack(narrow) === "deselect") this.select(null);
+        else setDetailOpen(false);
       },
       openNumber(itemKind, number) {
         const known = Object.values(state.lists)
@@ -167,11 +182,12 @@ function App() {
         if (selected) void send({ kind: "open", item: selected.kind, number: selected.number }).catch(() => {});
       },
     };
-  }, [state, shownKind, query, selected, narrow, refresh]);
+  }, [state, shownKind, query, selected, detailOpen, narrow, refresh]);
 
   const result = state?.lists[listKey(shownKind, query)];
   const { pinned, rows } = shownRows(result?.items ?? [], state?.branchPr ?? null, shownKind);
   useKeys(tab, pinned ? [pinned, ...rows] : rows);
+  const panes = panesFor({ narrow, selected: selected !== null, open: detailOpen });
 
   return (
     <div className={`app ${narrow ? "narrow" : "wide"}`} ref={root}>
@@ -187,9 +203,10 @@ function App() {
           <TopBar />
           <ViewsBar />
           <FilterBar />
-          <main className={`body ${selected ? "has-detail" : ""}`}>
-            {(!narrow || !selected) && <List />}
-            {selected ? <Detail item={selected} /> : !narrow && <Hint />}
+          <main className="body">
+            <List away={panes.list === "hidden"} />
+            {panes.second === "detail" && selected && <Detail item={selected} />}
+            {panes.second === "hint" && <Hint />}
           </main>
           {sheet && <SheetView sheet={sheet} />}
           <Toast toast={toast} />

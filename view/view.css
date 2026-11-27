@@ -250,7 +250,7 @@ h2 {
   top: calc(100% + 4px);
   z-index: 20;
   min-width: 200px;
-  max-width: 340px;
+  max-width: min(340px, calc(100vw - 24px));
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -362,8 +362,20 @@ h2 {
   grid-template-columns: minmax(280px, 2fr) 3fr;
 }
 
+/* Narrow (under 640 px, see layout.ts): the list and the detail take turns in one cell, so the list stays mounted under the detail. */
 .narrow .body {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.narrow .body > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* Hidden, not removed: a hidden box keeps its scroll position, and a removed one would lose it. */
+.list.away {
+  visibility: hidden;
 }
 
 /* Top bar, views and filters */
@@ -1496,4 +1508,73 @@ label:has(> input[type="checkbox"]) {
 .placeholders .chip {
   font-family: var(--mirador-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.85em;
+}
+
+/* Narrow (phone width): touch targets of about 40 px, controls that need no hover, and rows that wrap rather than overflow. */
+
+.narrow :is(.button, .icon-button, .repo-button, .kinds button, .view > button, .view.save, .chip, .sections button, .back, .file-row, .related-row, .checks-list .link, .view-remove) {
+  min-height: 40px;
+}
+
+.narrow .icon-button {
+  width: 40px;
+}
+
+.narrow .view-remove {
+  visibility: visible;
+  min-width: 40px;
+}
+
+.narrow :is(input, textarea) {
+  font-size: 16px;
+}
+
+.narrow .row {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.narrow .row-side {
+  grid-column: 2;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px 8px;
+  white-space: normal;
+}
+
+.narrow .detail {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.narrow .sections {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.narrow .sections button {
+  white-space: nowrap;
+}
+
+.narrow .checks-list li {
+  flex-wrap: wrap;
+}
+
+.narrow .check-name {
+  flex: 1 1 160px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.narrow .check-side {
+  flex-wrap: wrap;
+  white-space: normal;
+  gap: 4px 10px;
+}
+
+.narrow .markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }

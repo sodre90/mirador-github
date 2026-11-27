@@ -299,7 +299,7 @@ export function Detail({ item }: { item: ListItem }) {
   return (
     <section className="detail" aria-label={`${item.kind === "pr" ? "Pull request" : "Issue"} ${item.number}`}>
       {tab.narrow && (
-        <button type="button" className="back link" onClick={() => tab.select(null)}>
+        <button type="button" className="back link" onClick={() => tab.back()}>
           ← Back to the list
         </button>
       )}
