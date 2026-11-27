@@ -255,3 +255,46 @@ test("a workspace connects to its GitHub repository, and its issues and pull req
     await expect(row(page, 412)).toBeVisible();
   });
 });
+
+test("on a phone-width screen the list and the detail take turns, and Back returns to the list where it was", async ({ page }) => {
+  const { signInWithWorkspace } = helpers();
+  await signInWithWorkspace(page, host);
+  await page.getByLabel("Agent", { exact: true }).selectOption({ label: "github · opencode" });
+  const previousUrl = page.url();
+  await page.getByRole("button", { name: "+ New conversation" }).click();
+  await expect(page).not.toHaveURL(previousUrl);
+  await gitHubToggle(page).click();
+  // Mirador's own window stays desktop-sized, which hides the canvas at phone width. The view only reads its frame's width, so narrowing the frame is what a phone WebView would give it.
+  await page.locator(".canvas-panel:visible .canvas-frame.workspace-tab iframe").evaluate((frame: HTMLElement) => (frame.style.width = "390px"));
+  const app = tab(page).locator(".app");
+  await expect(app).toHaveClass(/narrow/);
+  await tab(page).getByRole("tab", { name: /Pull requests/ }).click();
+  await tab(page).getByRole("button", { name: /^All open/ }).click();
+  await expect(row(page, 409)).toBeVisible();
+
+  await test.step("the list fills the screen, with no detail beside it, and nothing overflows sideways", async () => {
+    await expect(tab(page).locator(".detail")).toHaveCount(0);
+    await expect(tab(page).locator(".list")).toBeVisible();
+    expect(await app.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  });
+
+  await test.step("opening an item shows its detail full width, and the list keeps its scroll position", async () => {
+    await tab(page).locator(".list").evaluate((list) => {
+      list.querySelector("ul")!.style.paddingBottom = "900px";
+      list.scrollTop = 120;
+    });
+    await row(page, 409).evaluate((element: HTMLElement) => element.click());
+    const detail = tab(page).locator(".detail");
+    await expect(detail.locator(".detail-title")).toContainText("Phone tab bar");
+    await expect(tab(page).locator(".list")).toBeHidden();
+    expect(await app.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    const back = detail.getByRole("button", { name: "← Back to the list" });
+    expect((await back.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(40);
+    await back.click();
+    await expect(detail).toHaveCount(0);
+    await expect(tab(page).locator(".list")).toBeVisible();
+    await expect(row(page, 409)).toHaveClass(/selected/);
+    await expect(row(page, 409)).toBeFocused();
+    expect(await tab(page).locator(".list").evaluate((list) => list.scrollTop)).toBe(120);
+  });
+});

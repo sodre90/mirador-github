@@ -87,14 +87,14 @@ export function shownRows(items: ListItem[], branchPr: ListItem | null, kind: Li
   return { pinned: pin, rows: pin ? items.filter(({ number }) => number !== pin.number) : items };
 }
 
-export function List() {
+export function List({ away = false }: { away?: boolean }) {
   const tab = useTab();
   const { state, kind, query } = tab;
   const result = state.lists[listKey(kind, query)];
   const loading = state.loading.includes(listKey(kind, query));
   const { pinned, rows } = shownRows(result?.items ?? [], state.branchPr, kind);
   return (
-    <section className="list" aria-label={kind === "pr" ? "Pull requests" : "Issues"}>
+    <section className={`list ${away ? "away" : ""}`} aria-label={kind === "pr" ? "Pull requests" : "Issues"}>
       {result?.problem && <p className="list-problem">⚠ {result.problem.message}</p>}
       {!result && loading && (
         <div className="list-loading">

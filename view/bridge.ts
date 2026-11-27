@@ -42,8 +42,14 @@ export interface Tab {
   setKind(kind: ItemKind): void;
   /** Runs the query: the list comes for it. */
   search(query: string): void;
+  /** The item the list highlights, and whose detail shows at wide width. */
   selected: ListItem | null;
-  select(item: ListItem | null): void;
+  /** Whether the detail is open at narrow width; Back closes it and keeps the highlight. */
+  detailOpen: boolean;
+  /** Highlights an item. It opens its detail unless `opens` is false, which keeps the list in view at narrow width while the arrow keys move. */
+  select(item: ListItem | null, opens?: boolean): void;
+  /** Back, and Escape: at narrow width the list returns with the item highlighted; at wide width the item is let go. */
+  back(): void;
   /** Opens an item by its number, as a link to it does, even one in no list. */
   openNumber(kind: ItemKind, number: number): void;
   showSheet(sheet: Sheet | null): void;
